@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Python virtual environment
+backend/.venv/
+
+# Environment files — never commit secrets
+backend/.env
+.env
+*.env
+.env.*
+!.env.example
+
+# Local data and IDE state
+*.sqlite3
+.vs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# VS Code
+.vscode/
+
+# Frontend build output
+frontend/dist/
+frontend/.vite/
+
+# Vite compiled assets — do not commit build artifacts
+frontend/src/assets/*.css
+frontend/src/assets/*.js
+
+# Audit and plan docs (optional — remove if you want them tracked)
+# AUDIT_REPORT.md
+# IMPLEMENTATION_PLAN.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Django static/media collected files
+backend/staticfiles/
+backend/media/

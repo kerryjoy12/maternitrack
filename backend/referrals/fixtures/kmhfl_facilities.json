@@ -1,0 +1,137 @@
+[
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 1,
+    "fields": {
+      "code": "12915",
+      "name": "Kenyatta National Hospital",
+      "county": "Nairobi"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 2,
+    "fields": {
+      "code": "15263",
+      "name": "Moi Teaching and Referral Hospital",
+      "county": "Uasin Gishu"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 3,
+    "fields": {
+      "code": "13703",
+      "name": "Kisii Teaching and Referral Hospital",
+      "county": "Kisii"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 4,
+    "fields": {
+      "code": "14639",
+      "name": "Kisumu County Referral Hospital",
+      "county": "Kisumu"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 5,
+    "fields": {
+      "code": "15349",
+      "name": "Nakuru County Referral Hospital",
+      "county": "Nakuru"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 6,
+    "fields": {
+      "code": "14457",
+      "name": "Kakamega County Referral Hospital",
+      "county": "Kakamega"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 7,
+    "fields": {
+      "code": "15412",
+      "name": "Nyeri County Referral Hospital",
+      "county": "Nyeri"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 8,
+    "fields": {
+      "code": "14937",
+      "name": "Machakos Level 5 Hospital",
+      "county": "Machakos"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 9,
+    "fields": {
+      "code": "11332",
+      "name": "Coast General Teaching and Referral Hospital",
+      "county": "Mombasa"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 10,
+    "fields": {
+      "code": "13506",
+      "name": "Garissa Provincial General Hospital",
+      "county": "Garissa"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 11,
+    "fields": {
+      "code": "13629",
+      "name": "Itierio Maternity and Nursing Home",
+      "county": "Kisii"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 12,
+    "fields": {
+      "code": "15001",
+      "name": "Mama Lucy Kibaki Hospital",
+      "county": "Nairobi"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 13,
+    "fields": {
+      "code": "14856",
+      "name": "Lodwar County Referral Hospital",
+      "county": "Turkana"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 14,
+    "fields": {
+      "code": "14387",
+      "name": "Jaramogi Oginga Odinga Teaching and Referral Hospital",
+      "county": "Kisumu"
+    }
+  },
+  {
+    "model": "referrals.kmhflfacility",
+    "pk": 15,
+    "fields": {
+      "code": "14565",
+      "name": "Kericho County Referral Hospital",
+      "county": "Kericho"
+    }
+  }
+]

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANC Visit Report - {{ visit.visit_number }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Times New Roman', serif;
+            line-height: 1.6;
+            color: #000;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-size: 12pt;
+        }
+        
+        /* Letterhead */
+        .letterhead {
+            text-align: center;
+            border-bottom: 3px double #1a365d;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .hospital-name {
+            font-size: 22pt;
+            font-weight: bold;
+            color: #1a365d;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .hospital-tagline {
+            font-size: 10pt;
+            color: #4a5568;
+            font-style: italic;
+            margin-bottom: 8px;
+        }
+        
+        .hospital-details {
+            font-size: 9pt;
+            color: #718096;
+            line-height: 1.4;
+        }
+        
+        /* Document Header */
+        .document-header {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .document-title {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #1a365d;
+        }
+        
+        .document-number {
+            font-size: 9pt;
+            color: #718096;
+            text-align: right;
+        }
+        
+        /* Sections */
+        .section {
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .section-title {
+            background: #edf2f7;
+            color: #1a365d;
+            padding: 8px 14px;
+            font-size: 11pt;
+            font-weight: bold;
+            border-bottom: 1px solid #e2e8f0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .section-content {
+            padding: 12px 14px;
+            background: #fff;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px dotted #e2e8f0;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #4a5568;
+            font-size: 10pt;
+        }
+        
+        .info-value {
+            color: #000;
+            font-weight: 600;
+            font-size: 10pt;
+        }
+        
+        /* Lab Results */
+        .lab-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+        }
+        
+        .lab-item {
+            background: #f7fafc;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #4299e1;
+        }
+        
+        .lab-test-name {
+            font-weight: bold;
+            color: #2d3748;
+            font-size: 10pt;
+            margin-bottom: 3px;
+        }
+        
+        .lab-result {
+            font-size: 10pt;
+            color: #4a5568;
+        }
+        
+        .normal {
+            color: #276749;
+            font-weight: bold;
+        }
+        
+        .abnormal {
+            color: #c53030;
+            font-weight: bold;
+        }
+        
+        .warning {
+            color: #c05621;
+            font-weight: bold;
+        }
+        
+        /* Footer */
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #e2e8f0;
+            text-align: center;
+            font-size: 9pt;
+            color: #718096;
+        }
+        
+        .signature-section {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        
+        .signature-block {
+            text-align: center;
+            min-width: 200px;
+        }
+        
+        .signature-line {
+            border-top: 2px solid #000;
+            padding-top: 5px;
+        }
+        
+        .signature-name {
+            font-weight: bold;
+            font-size: 11pt;
+        }
+        
+        .signature-title {
+            font-size: 10pt;
+            color: #4a5568;
+        }
+        
+        .stamp-box {
+            width: 100px;
+            height: 100px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8pt;
+            color: #a0aec0;
+            text-align: center;
+        }
+        
+        /* Disclaimer */
+        .disclaimer {
+            margin-top: 20px;
+            padding: 10px;
+            background: #fffaf0;
+            border: 1px solid #fed7aa;
+            border-radius: 4px;
+            font-size: 8pt;
+            color: #744210;
+            text-align: center;
+        }
+        
+        /* Official watermark */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 80pt;
+            color: rgba(26, 54, 93, 0.03);
+            pointer-events: none;
+            z-index: 0;
+            white-space: nowrap;
+        }
+        
+        @media print {
+            body {
+                padding: 0;
+                max-width: none;
+            }
+            
+            .section {
+                break-inside: avoid;
+            }
+            
+            .watermark {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Watermark -->
+    <div class="watermark">ITIERIO MATERNITY</div>
+    
+    <!-- Letterhead -->
+    <div class="letterhead">
+        <div class="hospital-name">ITIERIO MATERNITY AND NURSING HOME</div>
+        <div class="hospital-tagline">Compassionate Care for Mother and Child</div>
+        <div class="hospital-details">
+            P.O. Box [XXX], Nyamira County, Kenya | Tel: +254 XXX XXX XXX | Email: info@itieriomaternity.or.ke<br>
+            Licensed by the Kenya Medical Practitioners and Dentists Council (KMPDC) | NHIF Accredited
+        </div>
+    </div>
+    
+    <!-- Document Header -->
+    <div class="document-header">
+        <div>
+            <div class="document-title">ANTENATAL CARE VISIT RECORD</div>
+            <div style="font-size: 10pt; color: #4a5568;">ANC Visit {{ visit.visit_number }}</div>
+        </div>
+        <div class="document-number">
+            <div>Ref: ANC/{{ visit.visit_date|date:"Ymd" }}/{{ visit.id }}</div>
+            <div>Date: {{ visit.visit_date|date:"d M Y" }}</div>
+        </div>
+    </div>
+    
+    <!-- Patient Information -->
+    <div class="section">
+        <div class="section-title">📋 Patient Information</div>
+        <div class="section-content">
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Patient Name:</span>
+                    <span class="info-value">{{ patient.full_name }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Patient ID:</span>
+                    <span class="info-value">{{ patient.patient_number }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Age:</span>
+                    <span class="info-value">{{ patient.age|default:"N/A" }} years</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Blood Group:</span>
+                    <span class="info-value">{{ blood_group_confirmed_display|default:patient.blood_group }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Visit Date:</span>
+                    <span class="info-value">{{ visit.visit_date|date:"d M Y" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Weeks Pregnant:</span>
+                    <span class="info-value">{{ patient.weeks_pregnant|default:"N/A" }} weeks</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Vital Signs -->
+    <div class="section">
+        <div class="section-title">💓 Vital Signs & Measurements</div>
+        <div class="section-content">
+            <div class="info-grid">
+                {% if visit.weight_kg %}
+                <div class="info-item">
+                    <span class="info-label">Weight:</span>
+                    <span class="info-value">{{ visit.weight_kg }} kg</span>
+                </div>
+                {% endif %}
+                
+                {% if visit.bp_systolic and visit.bp_diastolic %}
+                <div class="info-item">
+                    <span class="info-label">Blood Pressure:</span>
+                    <span class="info-value">{{ visit.bp_systolic }}/{{ visit.bp_diastolic }} mmHg</span>
+                </div>
+                {% endif %}
+                
+                {% if visit.pulse_rate %}
+                <div class="info-item">
+                    <span class="info-label">Pulse Rate:</span>
+                    <span class="info-value">{{ visit.pulse_rate }} bpm</span>
+                </div>
+                {% endif %}
+                
+                {% if visit.temperature_c %}
+                <div class="info-item">
+                    <span class="info-label">Temperature:</span>
+                    <span class="info-value">{{ visit.temperature_c }} °C</span>
+                </div>
+                {% endif %}
+                
+                {% if visit.muac_cm %}
+                <div class="info-item">
+                    <span class="info-label">MUAC:</span>
+                    <span class="info-value">{{ visit.muac_cm }} cm</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pregnancy Specifics -->
+    <div class="section">
+        <div class="section-title">🤰 Pregnancy Assessment</div>
+        <div class="section-content">
+            <div class="info-grid">
+                {% if visit.fundal_height_cm %}
+                <div class="info-item">
+                    <span class="info-label">Fundal Height:</span>
+                    <span class="info-value">{{ visit.fundal_height_cm }} cm</span>
+                </div>
+                {% endif %}
+                
+                {% if visit.fetal_heart_rate %}
+                <div class="info-item">
+                    <span class="info-label">Fetal Heart Rate:</span>
+                    <span class="info-value">{{ visit.fetal_heart_rate }} bpm</span>
+                </div>
+                {% endif %}
+                
+                {% if visit.fetal_presentation %}
+                <div class="info-item">
+                    <span class="info-label">Fetal Presentation:</span>
+                    <span class="info-value">{{ fetal_presentation_display }}</span>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if visit.ultrasound_results %}
+            <div style="margin-top: 10px;">
+                <span class="info-label">Ultrasound Results:</span>
+                <p style="margin-top: 3px; color: #4a5568; font-size: 10pt;">{{ visit.ultrasound_results }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Laboratory Results -->
+    <div class="section">
+        <div class="section-title">🔬 Laboratory Results</div>
+        <div class="section-content">
+            <div class="lab-results">
+                {% if visit.hemoglobin_gdl %}
+                <div class="lab-item">
+                    <div class="lab-test-name">Hemoglobin (Anemia Check)</div>
+                    <div class="lab-result">
+                        {{ visit.hemoglobin_gdl }} g/dL
+                        {% if anemia_severity_display %}
+                        <br><span class="{% if visit.anemia_severity == 'NORMAL' %}normal{% else %}warning{% endif %}">
+                            {{ anemia_severity_display }}
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if visit.blood_sugar_mgdl %}
+                <div class="lab-item">
+                    <div class="lab-test-name">Blood Sugar</div>
+                    <div class="lab-result">
+                        {{ visit.blood_sugar_mgdl }} mg/dL
+                        {% if blood_sugar_type_display %}
+                        <br><span style="color: #718096;">({{ blood_sugar_type_display }})</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if visit.urine_protein != 'NIL' or visit.urine_glucose != 'NIL' or visit.urine_ketones != 'NIL' %}
+                <div class="lab-item">
+                    <div class="lab-test-name">Urine Analysis</div>
+                    <div class="lab-result">
+                        {% if visit.urine_protein != 'NIL' %}Protein: {{ visit.urine_protein }}{% endif %}
+                        {% if visit.urine_glucose != 'NIL' %}{% if visit.urine_protein != 'NIL' %}, {% endif %}Glucose: {{ visit.urine_glucose }}{% endif %}
+                        {% if visit.urine_ketones != 'NIL' %}{% if visit.urine_protein != 'NIL' or visit.urine_glucose != 'NIL' %}, {% endif %}Ketones: {{ visit.urine_ketones }}{% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if visit.hiv_status %}
+                <div class="lab-item">
+                    <div class="lab-test-name">HIV Screening</div>
+                    <div class="lab-result">
+                        <span class="{% if visit.hiv_status == 'NEGATIVE' %}normal{% elif visit.hiv_status == 'POSITIVE' %}abnormal{% else %}warning{% endif %}">
+                            {{ hiv_status_display }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if visit.syphilis_status %}
+                <div class="lab-item">
+                    <div class="lab-test-name">Syphilis Screening (VDRL/RPR)</div>
+                    <div class="lab-result">
+                        <span class="{% if visit.syphilis_status == 'NON-REACTIVE' %}normal{% elif visit.syphilis_status == 'REACTIVE' %}abnormal{% else %}warning{% endif %}">
+                            {{ syphilis_status_display }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if visit.hepatitis_b_surface_ag and visit.hepatitis_b_surface_ag != 'NOT_TESTED' %}
+                <div class="lab-item">
+                    <div class="lab-test-name">Hepatitis B Surface Antigen</div>
+                    <div class="lab-result">
+                        <span class="{% if visit.hepatitis_b_surface_ag == 'NEGATIVE' %}normal{% elif visit.hepatitis_b_surface_ag == 'POSITIVE' %}abnormal{% else %}warning{% endif %}">
+                            {{ hepatitis_b_surface_ag_display }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if visit.rubella_igg and visit.rubella_igg != 'NOT_TESTED' %}
+                <div class="lab-item">
+                    <div class="lab-test-name">Rubella IgG Antibody</div>
+                    <div class="lab-result">
+                        <span class="{% if visit.rubella_igg == 'IMMUNE' %}normal{% elif visit.rubella_igg == 'NON-IMMUNE' %}warning{% else %}warning{% endif %}">
+                            {{ rubella_igg_display }}
+                        </span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Clinical Management -->
+    <div class="section">
+        <div class="section-title">💊 Clinical Management</div>
+        <div class="section-content">
+            {% if visit.medication_prescribed %}
+            <div style="margin-bottom: 10px;">
+                <span class="info-label">Medications Prescribed:</span>
+                <p style="margin-top: 3px; color: #4a5568; font-size: 10pt;">{{ visit.medication_prescribed }}</p>
+            </div>
+            {% endif %}
+            
+            {% if visit.supplements_given %}
+            <div style="margin-bottom: 10px;">
+                <span class="info-label">Supplements Given:</span>
+                <p style="margin-top: 3px; color: #4a5568; font-size: 10pt;">{{ visit.supplements_given }}</p>
+            </div>
+            {% endif %}
+            
+            {% if visit.health_education_given %}
+            <div style="margin-bottom: 10px;">
+                <span class="info-label">Health Education Provided:</span>
+                <p style="margin-top: 3px; color: #4a5568; font-size: 10pt;">{{ visit.health_education_given }}</p>
+            </div>
+            {% endif %}
+            
+            {% if visit.complications_noted %}
+            <div style="margin-bottom: 10px;">
+                <span class="info-label" style="color: #c53030;">⚠ Complications Noted:</span>
+                <p style="margin-top: 3px; color: #c53030; font-size: 10pt;">{{ visit.complications_noted }}</p>
+            </div>
+            {% endif %}
+            
+            {% if visit.general_notes %}
+            <div style="margin-bottom: 10px;">
+                <span class="info-label">Clinical Notes:</span>
+                <p style="margin-top: 3px; color: #4a5568; font-size: 10pt;">{{ visit.general_notes }}</p>
+            </div>
+            {% endif %}
+            
+            {% if visit.next_appointment_date %}
+            <div style="margin-top: 15px; padding: 10px; background: #ebf8ff; border: 1px solid #bee3f8; border-radius: 4px;">
+                <span class="info-label">Next Scheduled Appointment:</span>
+                <span class="info-value" style="color: #2b6cb0; font-weight: bold;">{{ visit.next_appointment_date|date:"d M Y" }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Footer / Signature -->
+    <div class="signature-section">
+        <div class="signature-block">
+            <div class="stamp-box">
+                OFFICIAL<br>STAMP
+            </div>
+        </div>
+        <div class="signature-block">
+            {% if attending_staff %}
+            <div class="signature-line">
+                <div class="signature-name">{{ attending_staff.full_name }}</div>
+                <div class="signature-title">{{ attending_staff.role }}</div>
+                <div style="font-size: 9pt; color: #718096;">Reg. No: {{ attending_staff.registration_number|default:"N/A" }}</div>
+            </div>
+            {% else %}
+            <div class="signature-line">
+                <div class="signature-name">_________________________</div>
+                <div class="signature-title">Attending Healthcare Provider</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Document Info -->
+    <div class="footer">
+        <div>
+            <strong>Document Generated:</strong> {{ visit.created_at|date:"d M Y H:i" }} EAT<br>
+            <strong>Report ID:</strong> ANC-{{ visit.id }}-{{ visit.visit_date|date:"Ymd" }} | 
+            <strong>Generated by:</strong> ITIERIO Maternity EMR System v2.0
+        </div>
+    </div>
+    
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <strong>CONFIDENTIALITY NOTICE:</strong> This document contains privileged and confidential medical information intended solely for the use of the patient and healthcare providers involved in the patient's care. 
+        Unauthorized disclosure, copying, or distribution is prohibited by law. If you have received this document in error, please notify ITIERIO Maternity and Nursing Home immediately.
+        <br><br>
+        <em>"Providing Quality Maternal and Child Healthcare Services to Our Community"</em>
+    </div>
+</body>
+</html>

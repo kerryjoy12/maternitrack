@@ -1,0 +1,39 @@
+{
+  "name": "MaterniTrack",
+  "short_name": "MaterniTrack",
+  "description": "Maternal & Maternity Hospital Management System — Itierio Nursing Home",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050E1A",
+  "theme_color": "#0D9488",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["medical", "health"],
+  "prefer_related_applications": false
+}

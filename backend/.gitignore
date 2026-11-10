@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------------------
+# MaterniTrack — Django backend (__gitignore__)
+# ---------------------------------------------------------------------------
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg
+*.egg-info/
+.venv/
+venv/
+ENV/
+env/
+
+# Virtualenv artifacts
+pip-wheel-cache/
+*.whl
+
+# Django
+*.log
+local_settings.py
+media/
+staticfiles/
+*.sqlite3
+
+# JavaScript / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/src/assets/*.css
+frontend/src/assets/*.js
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Secrets / environment
+*.env
+backend/.env
+.env
+.env.*
+
+# Build artifacts
+backend/staticfiles/
+backend/media/
+
+# Generated docs (optional)
+# AUDIT_REPORT.md
+# IMPLEMENTATION_PLAN.txt
+# PRESENTATION.md
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Test artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

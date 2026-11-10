@@ -1,0 +1,1279 @@
+================================================================================
+  MaterniTrack — Implementation Plan
+  Itierio Nursing Home | Based on Full Technical Audit Report 2025
+================================================================================
+
+  Total Phases  : 6
+  Total Duration: ~14 Weeks
+  Current Score : 65/100
+  Target Score  : 90/100
+
+================================================================================
+  PHASE 1 — CRITICAL SECURITY FIXES  (Week 1 | Day 1–5)
+  Goal: Make the system safe to run in production
+  Priority: MUST complete before any real patient data is entered
+================================================================================
+
+  TASK 1.1 — Rotate Africa's Talking API Key
+  --------------------------------------------------
+  File    : backend/.env  +  backend/config/settings.py
+  Effort  : 1 hour
+  Risk    : CRITICAL
+
+  Steps:
+    1. Log in to https://account.africastalking.com
+    2. Revoke the exposed key: atsk_ca0cf3ad68a58857b302b5fa...
+    3. Generate a new API key
+    4. Update backend/.env:
+         AT_API_KEY=<your-new-key-here>
+    5. In settings.py line 90, remove the hardcoded default entirely:
+         BEFORE: AT_API_KEY = config('AT_API_KEY', default='atsk_37a2e...')
+         AFTER:  AT_API_KEY = config('AT_API_KEY')
+    6. Test SMS send via the reminders page
+  Done when: Old key is revoked, new key works, no key in Python files
+
+  --------------------------------------------------
+  TASK 1.2 — Remove Hardcoded Database Password
+  --------------------------------------------------
+  File    : backend/config/settings.py  line 76
+  Effort  : 15 minutes
+  Risk    : CRITICAL
+
+  Steps:
+    1. Open backend/config/settings.py
+    2. Change line 76:
+         BEFORE: 'PASSWORD': config('DB_PASSWORD', default='#Itierio@254'),
+         AFTER:  'PASSWORD': config('DB_PASSWORD'),
+    3. Confirm DB_PASSWORD is set in backend/.env
+    4. Restart Django and confirm DB connects
+  Done when: No password appears anywhere in Python source files
+
+  --------------------------------------------------
+  TASK 1.3 — Fix DEBUG Default Value
+  --------------------------------------------------
+  File    : backend/config/settings.py  line 10-11
+  Effort  : 5 minutes
+  Risk    : HIGH
+
+  Steps:
+    1. Change settings.py line 11:
+         BEFORE: DEBUG = config('DEBUG', default=True, cast=bool)
+         AFTER:  DEBUG = config('DEBUG', default=False, cast=bool)
+    2. In backend/.env set:
+         DEBUG=True   (for local development only)
+    3. Confirm production server will use DEBUG=False when .env is absent
+  Done when: Default is False; dev still works with .env override
+
+  --------------------------------------------------
+  TASK 1.4 — Fix SECRET_KEY Default
+  --------------------------------------------------
+  File    : backend/config/settings.py  line 9
+  Effort  : 10 minutes
+  Risk    : HIGH
+
+  Steps:
+    1. Generate a strong secret key:
+         python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+    2. Paste result into backend/.env:
+         SECRET_KEY=<generated-key>
+    3. Change settings.py line 9:
+         BEFORE: SECRET_KEY = config('SECRET_KEY', default='dev-secret-key-change-in-production')
+         AFTER:  SECRET_KEY = config('SECRET_KEY')
+  Done when: No default secret key in source code
+
+  --------------------------------------------------
+  TASK 1.5 — Fix SSL Disable in SMS Service
+  --------------------------------------------------
+  File    : backend/reminders/sms_service.py  lines 1-13
+  Effort  : 2 hours
+  Risk    : CRITICAL
+
+  Steps:
+    1. Remove lines 5-13 entirely (urllib3 warning suppress + requests monkeypatch)
+    2. Remove the urllib3 and requests imports if not used elsewhere
+    3. Replace with proper SDK initialization:
+         africastalking.initialize(
+             username=settings.AT_USERNAME,
+             api_key=settings.AT_API_KEY
+         )
+       Move this initialization to Django app startup (AppConfig.ready())
+       instead of calling it on every SMS send
+    4. If SSL errors persist on sandbox, fix at the OS/cert level:
+         pip install certifi
+         Then set env var: SSL_CERT_FILE=$(python -m certifi)
+    5. Test a sandbox SMS send and confirm it works without SSL bypass
+  Done when: No urllib3/SSL disabling code exists anywhere in codebase
+
+  --------------------------------------------------
+  TASK 1.6 — Fix requirements.txt Version Numbers
+  --------------------------------------------------
+  File    : backend/requirements.txt
+  Effort  : 30 minutes
+  Risk    : HIGH (app may not install at all with fake versions)
+
+  Steps:
+    1. Replace non-existent versions:
+         BEFORE: django==6.0.5
+         AFTER:  django==5.0.9
+
+         BEFORE: djangorestframework==3.17.1
+         AFTER:  djangorestframework==3.15.2
+
+         BEFORE: lucide-react (check frontend too)
+
+    2. Run in backend/:
+         pip install -r requirements.txt
+    3. Fix any dependency conflicts that surface
+    4. Run: python manage.py check
+  Done when: pip install completes without errors
+
+  --------------------------------------------------
+  TASK 1.7 — Reduce JWT Token Lifetime
+  --------------------------------------------------
+  File    : backend/config/settings.py  lines 95-100
+  Effort  : 10 minutes
+  Risk    : HIGH
+
+  Steps:
+    1. Change ACCESS_TOKEN_LIFETIME:
+         BEFORE: timedelta(hours=8)
+         AFTER:  timedelta(hours=1)
+    2. Keep REFRESH_TOKEN_LIFETIME at 7 days (acceptable)
+    3. Test login and confirm token expiry works
+  Done when: Access tokens expire in 1 hour, refresh still works
+
+  --------------------------------------------------
+  TASK 1.8 — Add File Upload Type Validation
+  --------------------------------------------------
+  File    : backend/clinical/views.py  (document upload view)
+  Effort  : 1 hour
+  Risk    : HIGH
+
+  Steps:
+    1. In the PatientDocument upload view, add MIME type validation:
+         ALLOWED_TYPES = [
+             'application/pdf',
+             'image/jpeg', 'image/png',
+             'application/msword',
+             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+         ]
+    2. Check file.content_type against allowed list before saving
+    3. Return HTTP 400 with clear error message on invalid type
+    4. Also validate file extension matches MIME type
+  Done when: Uploading a .exe or .php file is rejected with an error
+
+  --------------------------------------------------
+  PHASE 1 CHECKLIST
+  --------------------------------------------------
+  [ ] AT API key rotated and old key revoked
+  [ ] No credentials in Python source files
+  [ ] DEBUG defaults to False
+  [ ] SSL verification restored in sms_service.py
+  [ ] requirements.txt has real version numbers
+  [ ] JWT access token lifetime reduced to 1 hour
+  [ ] File upload type validation added
+  [ ] All tasks tested and confirmed working
+
+
+================================================================================
+  PHASE 2 — CODE QUALITY & BROKEN FIXES  (Week 1–2 | Day 3–10)
+  Goal: Remove fake data, fix broken UI, sync database schema
+  Priority: HIGH — affects trust and reliability of the system
+================================================================================
+
+  TASK 2.1 — Remove All Hardcoded Names and PII from UI
+  --------------------------------------------------
+  FileDHIAMBO'
+         AFTER:  user?.full_name || 'User'
+
+    4. Dashboard.tsx line 182 — greeting:
+         BEFORE: user?.full_name?.split(' ')?.[0] || 'Joachim'
+         AFTER:  user?.full_name?.split(' ')?.[0] || 'there'
+
+    5. Review all other files for any remaining hardcoded personal names
+  Done when: No staff member's personal name appears anywhere in source code
+
+  --------------------------------------------------
+  TASK 2.2 — Remove Fake Dashboard Metrics
+  --------------------------------------------------
+  File    : frontend/src/pages/Dashboard.tsx
+  Effort  : 2 hours
+  Risk    : MEDIUM
+
+  Steps:
+    1. Remove hardcoded fallback numbers on stat cards:
+         BEFORE: trends?.totals?.registrations || 87
+         AFTER:  trends?.totals?.registrations ?? 0
+
+         BEFORE: trends?.totals?.deliveries || 54
+         AFTER:  trends?.totals?.deliveries ?? 0
+
+    2. Remove the entire static "Bed Occupancy" stat card (lines ~341-345):
+         The card shows "8.3%" and "348 total beds" — both fabricated.
+         Delete this card entirely until real bed tracking is built.
+
+    3. Replace static trend percentages on metric cards with a real trend percentage based on the true system data:
+         BEFORE: trend="~ 86.1%"   (on Total Active Patients card)
+         AFTER:  trend="" 
+         Do the same for all 4 ModernMetricCard components
+
+    4. Fix "Completed Appts" stat card — it shows upcoming_this_week:
+         BEFORE: value={summary?.kpis?.upcoming_this_week || 0}
+                 label="Completed Appts"
+         AFTER:  value={summary?.appointment_breakdown?.attended ?? 0}
+                 label="Attended Appointments"
+
+    5. Fix static chart subtitle:
+         BEFORE: "Today - 1 periods • Granularity: daily"
+         AFTER:  Dynamic string based on period/weeks state
+  Done when: Dashboard shows only real data; zeros when data is absent
+
+  --------------------------------------------------
+  TASK 2.3 — Wire Dashboard Refresh Button
+  --------------------------------------------------
+  File    : frontend/src/pages/Dashboard.tsx
+  Effort  : 30 minutes
+  Risk    : LOW
+
+  Steps:
+    1. Extract the data-fetching logic into a named function:
+         const loadData = useCallback(async () => {
+           setLoading(true);
+           try {
+             const [sumRes, trendRes] = await Promise.all([...]);
+             ...
+           } finally { setLoading(false); }
+         }, []);
+
+    2. Add onClick to the RefreshCw button:
+         BEFORE: <button className="btn btn-ghost btn-icon" style={...}>
+         AFTER:  <button className="btn btn-ghost btn-icon"
+                   onClick={loadData} disabled={loading}>
+
+    3. Add spinning animation when loading:
+         style={{ animation: loading ? 'spin 0.7s linear infinite' : 'none' }}
+  Done when: Clicking refresh re-fetches all dashboard data
+
+  --------------------------------------------------
+  TASK 2.4 — upgrade Non-functional Search Inputs
+  --------------------------------------------------
+  Files   : frontend/src/components/Layout.tsx
+  Effort  : 30 minutes
+  Risk    : LOW
+
+  Steps:
+    
+    option B (Implement basic search — recommended):
+      1. Add state: const [navSearch, setNavSearch] = useState('')
+      2. Bind sidebar input to navSearch state
+      3. Filter NAV_SECTIONS items by label.toLowerCase().includes(navSearch)
+      4. This gives working sidebar menu search with minimal effort
+
+    Use Option B — it is a useful feature for nurses navigating the system
+  Done when: Search input either works or is removed — no dead UI elements
+
+  --------------------------------------------------
+  TASK 2.5 — Fix ANCVisit, GrowthRecord, ChildClinicVisit Dates
+  --------------------------------------------------
+  Files   : backend/clinical/models.py
+            backend/pediatrics/models.py
+  Effort  : 45 minutes + migration
+  Risk    : HIGH (requires DB migration)
+
+  Steps:
+    1. In clinical/models.py — ANCVisit model:
+         BEFORE: visit_date = models.DateField(auto_now_add=True)
+         AFTER:  visit_date = models.DateField(default=date.today)
+                 Add: from datetime import date at top of file
+
+    2. In pediatrics/models.py — GrowthRecord model:
+         BEFORE: date_recorded = models.DateField(auto_now_add=True)
+         AFTER:  date_recorded = models.DateField(default=date.today)
+
+    3. In pediatrics/models.py — ChildClinicVisit model:
+         BEFORE: visit_date = models.DateField(auto_now_add=True)
+         AFTER:  visit_date = models.DateField(default=date.today)
+
+    4. Generate and run migrations:
+         python manage.py makemigrations clinical pediatrics
+         python manage.py migrate
+
+    5. Update the corresponding serializers to accept visit_date as input
+    6. Update frontend forms to include date picker for these fields
+  Done when: Nurses can enter past visit dates on all three forms
+
+  --------------------------------------------------
+  TASK 2.6 — Fix Patient Number Race Condition
+  --------------------------------------------------
+  File    : backend/patients/models.py  lines 13-17
+  Effort  : 1 hour
+  Risk    : HIGH
+
+  Steps:
+    1. Replace generate_patient_number() with atomic version:
+
+         from django.db import transaction
+
+         def generate_patient_number():
+             with transaction.atomic():
+                 last = Patient.objects.select_for_update().order_by('-id').first()
+                 if last and last.patient_number:
+                     try:
+                         num = int(last.patient_number.split('-')[1]) + 1
+                     except (IndexError, ValueError):
+                         num = 1
+                 else:
+                     num = 1
+                 return f"MAT-{num:03d}"
+
+    2. Also wrap the call in Patient.save() inside atomic:
+         def save(self, *args, **kwargs):
+             if not self.patient_number:
+                 with transaction.atomic():
+                     self.patient_number = generate_patient_number()
+             ...
+  Done when: Concurrent patient registrations never produce duplicate numbers
+
+  --------------------------------------------------
+  TASK 2.7 — Sync mysql_schema.sql with Django Models
+  --------------------------------------------------
+  File    : backend/mysql_schema.sql
+  Effort  : 2 hours
+  Risk    : MEDIUM
+
+  Steps:
+    1. Run all pending migrations first:
+         python manage.py migrate
+
+    2. Export the live schema from MySQL:
+         mysqldump -u root -p --no-data maternity_db > mysql_schema.sql
+
+    3. Replace backend/mysql_schema.sql with the exported file
+
+    4. Verify these fields now appear in the patients table:
+         - medical_history (LONGTEXT)
+         - surgical_history (LONGTEXT)
+         - allergies (LONGTEXT)
+         - family_history (LONGTEXT)
+         - national_id (VARCHAR 20)
+         - nhif_number (VARCHAR 50)
+
+    5. Verify staff_users table includes:
+         - bio (LONGTEXT)
+         - profile_completed (BOOLEAN)
+  Done when: mysql_schema.sql matches the actual running database exactly
+
+  --------------------------------------------------
+  TASK 2.8 — Add Missing Database Indexes
+  --------------------------------------------------
+  File    : backend/patients/models.py
+            backend/appointments/models.py
+  Effort  : 30 minutes + migration
+  Risk    : LOW
+
+  Steps:
+    1. In patients/models.py Patient Meta class, add:
+         indexes = [
+             models.Index(fields=['edd'],           name='patients_edd_idx'),
+             models.Index(fields=['risk_level'],     name='patients_risk_idx'),
+             models.Index(fields=['clinic_stage'],   name='patients_stage_idx'),
+             models.Index(fields=['is_active'],      name='patients_active_idx'),
+         ]
+
+    2. In appointments/models.py Appointment Meta class, add:
+         indexes = [
+             models.Index(fields=['status'],         name='appointments_status_idx'),
+             models.Index(fields=['scheduled_date'], name='appointments_date_idx'),
+         ]
+
+    3. Run migrations:
+         python manage.py makemigrations patients appointments
+         python manage.py migrate
+  Done when: Indexes visible in MySQL SHOW INDEX FROM patients
+
+  --------------------------------------------------
+  TASK 2.9 — Fix Login Page Label CSS Error
+  --------------------------------------------------
+  File    : frontend/src/pages/Login.tsx
+  Effort  : 5 minutes
+  Risk    : LOW
+
+  Steps:
+    1. Find the label on line with className="form-label outline-none"
+    2. Remove "outline-none" from the label — it is meaningless on a label element:
+         BEFORE: <label className="form-label outline-none" htmlFor="email">
+         AFTER:  <label className="form-label" htmlFor="email">
+  Done when: No outline-none class on label elements
+
+  --------------------------------------------------
+  TASK 2.10 — Remove Dead Middleware Code
+  --------------------------------------------------
+  File    : backend/core/middleware.py  lines 28-32
+  Effort  : 10 minutes
+  Risk    : LOW
+
+  Steps:
+    1. Remove the inner HistoryRequestMiddleware invocation block:
+         DELETE lines:
+           if request.user and request.user.is_authenticated:
+               try:
+                   from simple_history.middleware import HistoryRequestMiddleware
+                   HistoryRequestMiddleware(self.get_response)(request)
+               except Exception:
+                   pass
+    2. The middleware stack in settings.py already handles this correctly
+  Done when: AuditMiddleware only stores request in thread-locals and calls get_response
+
+  --------------------------------------------------
+  T  Files   : frontend/src/assets/index-Bql115ao.css
+            frontend/src/assets/index-D7-m-iSM.js
+ASK 2.11 — Remove Compiled Assets from Source Control
+  --------------------------------------------------
+  Effort  : 15 minutes
+  Risk    : LOW
+
+  Steps:
+    1. Delete both files:
+         rm frontend/src/assets/index-Bql115ao.css
+         rm frontend/src/assets/index-D7-m-iSM.js
+
+    2. Add to root .gitignore:
+         frontend/src/assets/*.css
+         frontend/src/assets/*.js
+
+    3. Also merge maternity.gitignore into .gitignore:
+         cat maternity.gitignore >> .gitignore
+         rm maternity.gitignore
+
+    4. Remove root-level orphaned package files if confirmed unused:
+         Check if root package.json is referenced anywhere
+         If not: rm package.json package-lock.json (root level)
+  Done when: No build artifacts in source control; .gitignore consolidateds   : frontend/src/components/Layout.tsx
+            frontend/src/pages/Dashboard.tsx
+  Effort  : 1 hour
+  Risk    : MEDIUM
+
+  Steps:
+    1. Layout.tsx line 160 — sidebar footer user name:
+         BEFORE: user?.full_name || 'Joachim Odhaimbo'
+         AFTER:  user?.full_name || ''
+
+    2. Layout.tsx line 161 — sidebar footer email:
+         BEFORE: user?.email || 'neville@itierionursin..'
+         AFTER:  user?.email || ''
+
+    3. Layout.tsx line 174 — header fallback name:
+         BEFORE: user?.full_name || 'JOACHIM O
+
+  --------------------------------------------------
+  PHASE 2 CHECKLIST
+  --------------------------------------------------
+  [ ] No hardcoded personal names in any source file
+  [ ] Fake dashboard metrics removed or replaced with real data
+  [ ] Refresh button works on Dashboard
+  [ ] Sidebar and header search inputs functional or removed
+  [ ] ANC/Growth/ChildVisit dates are editable by clinicians
+  [ ] Patient number generation is atomic (no race condition)
+  [ ] mysql_schema.sql regenerated from live DB
+  [ ] Missing DB indexes added and migrated
+  [ ] Login label CSS error fixed
+  [ ] Dead middleware code removed
+  [ ] Compiled assets removed from git
+
+
+================================================================================
+  PHASE 3 — PERFORMANCE & ARCHITECTURE  (Week 2–3 | Day 8–15)
+  Goal: Improve speed, reduce bundle size, separate environments
+================================================================================
+
+  TASK 3.1 — Remove Duplicate Chart Library
+  --------------------------------------------------
+  File    : frontend/package.json
+  Effort  : 15 minutes
+  Risk    : LOW
+
+  Steps:
+    1. Confirm chart.js and react-chartjs-2 are not imported anywhere:
+         grep -r "chart.js" frontend/src/
+         grep -r "react-chartjs-2" frontend/src/
+    2. Uninstall both packages:
+         cd frontend
+         npm uninstall chart.js react-chartjs-2
+    3. Run npm run build and confirm no errors
+    4. Bundle size should decrease by ~200KB
+  Done when: chart.js and react-chartjs-2 absent from node_modules and package.json
+
+  --------------------------------------------------
+  TASK 3.2 — Lazy Load jsPDF and html2canvas
+  --------------------------------------------------
+  File    : frontend/src/pages/Dashboard.tsx
+  Effort  : 1 hour
+  Risk    : LOW
+
+  Steps:
+    1. Remove top-level imports:
+         REMOVE: import html2canvas from 'html2canvas';
+         REMOVE: import jsPDF from 'jspdf';
+
+    2. Replace the exportReport function with lazy imports:
+         const exportReport = async (type: 'png' | 'pdf') => {
+           if (!reportRef.current) return;
+           const { default: html2canvas } = await import('html2canvas');
+           const canvas = await html2canvas(reportRef.current, { scale: 2 });
+           if (type === 'png') { ... }
+           const { default: jsPDF } = await import('jspdf');
+           const pdf = new jsPDF('p', 'mm', 'a4');
+           ...
+         };
+    3. Rebuild and verify export still works
+  Done when: jsPDF/html2canvas only load when the user clicks Export
+
+  --------------------------------------------------
+  TASK 3.3 — Add AbortController to Dashboard useEffect
+  --------------------------------------------------
+  File    : frontend/src/pages/Dashboard.tsx
+  Effort  : 30 minutes
+  Risk    : LOW
+
+  Steps:
+    1. Update the main useEffect in Dashboard.tsx:
+         useEffect(() => {
+           const controller = new AbortController();
+           (async () => {
+             try {
+               const [sumRes, trendRes] = await Promise.all([
+                 dashboardApi.summary(),
+                 dashboardApi.trends('weekly', 12)
+               ]);
+               if (!controller.signal.aborted) {
+                 setSummary(sumRes.data);
+                 setTrends(trendRes.data);
+               }
+             } catch (err) {
+               if (!controller.signal.aborted) console.error(err);
+             } finally {
+               if (!controller.signal.aborted) setLoading(false);
+             }
+           })();
+           return () => controller.abort();
+         }, []);
+  Done when: Navigating away from Dashboard mid-load causes no state update errors
+
+  --------------------------------------------------
+  TASK 3.4 — Add Dashboard API Caching (Backend)
+  --------------------------------------------------
+  File    : backend/dashboard/views.py
+  Effort  : 1 hour
+  Risk    : LOW
+
+  Steps:
+    1. Add Django cache to DashboardSummaryView:
+         from django.views.decorators.cache import cache_page
+         from django.utils.decorators import method_decorator
+
+         @method_decorator(cache_page(60), name='dispatch')
+         class DashboardSummaryView(APIView):
+             ...
+
+    2. Do the same for TrendsView with cache_page(300) — 5 minutes cache
+
+    3. Ensure Redis is running (already configured in settings.py):
+         CELERY_BROKER_URL = 'redis://localhost:6379/0'
+         Add to settings.py:
+           CACHES = {
+               'default': {
+                   'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+                   'LOCATION': config('CELERY_BROKER_URL', default='redis://localhost:6379/0'),
+               }
+           }
+    4. Test that dashboard loads faster on repeat visits
+  Done when: Dashboard summary is cached for 60 seconds in Redis
+
+  --------------------------------------------------
+  TASK 3.5 — Add Frontend Pagination to Patients Table
+  --------------------------------------------------
+  Files   : frontend/src/pages/Patients.tsx
+  Effort  : 2 hours
+  Risk    : MEDIUM
+
+  Steps:
+    1. Add pagination state to Patients.tsx:
+         const [page, setPage] = useState(1);
+         const [totalCount, setTotalCount] = useState(0);
+         const PAGE_SIZE = 20;
+
+    2. Pass page param to API call:
+         patientsApi.list({ ...params, page: String(page) })
+
+    3. Read total count from response:
+         setTotalCount(data.count ?? list.length);
+
+    4. Add pagination controls below the table:
+         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px' }}>
+           <button disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</button>
+           <span>Page {page} of {Math.ceil(totalCount / PAGE_SIZE)}</span>
+           <button disabled={page * PAGE_SIZE >= totalCount} onClick={() => setPage(p => p + 1)}>Next</button>
+         </div>
+
+    5. Reset to page 1 when filters change:
+         useEffect(() => { setPage(1); }, [search, stageFilter, riskFilter]);
+  Done when: Large patient lists load page by page with working navigation
+
+  --------------------------------------------------
+  TASK 3.6 — Reduce Layout Polling Interval
+  --------------------------------------------------
+  File    : frontend/src/components/Layout.tsx  line 93
+  Effort  : 5 minutes
+  Risk    : LOW
+
+  Steps:
+    1. Change the polling interval from 20 seconds to 60 seconds:
+         BEFORE: const interval = window.setInterval(loadUnresolved, 20000);
+         AFTER:  const interval = window.setInterval(loadUnresolved, 60000);
+  Done when: Background API call fires every 60s instead of every 20s
+
+  --------------------------------------------------
+  TASK 3.7 — Separate Dev and Production Settings
+  --------------------------------------------------
+  File    : backend/config/settings.py  (split into two files)
+  Effort  : 2 hours
+  Risk    : MEDIUM
+
+  Steps:
+    1. Rename current settings.py to settings_base.py
+
+    2. Create backend/config/settings_dev.py:
+         from .settings_base import *
+         DEBUG = True
+         ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+    3. Create backend/config/settings_prod.py:
+         from .settings_base import *
+         DEBUG = False
+         ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
+         SECURE_SSL_REDIRECT = True
+         SESSION_COOKIE_SECURE = True
+         CSRF_COOKIE_SECURE = True
+
+    4. Update manage.py and wsgi.py/asgi.py to use settings_dev by default:
+         os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings_dev')
+
+    5. On production server, set environment variable:
+         DJANGO_SETTINGS_MODULE=config.settings_prod
+  Done when: Dev and prod use separate settings files with no overlap risk
+
+  --------------------------------------------------
+  TASK 3.8 — Remove console.log Statements from main.tsx
+  --------------------------------------------------
+  File    : frontend/src/main.tsx  lines 10, 16
+  Effort  : 5 minutes
+  Risk    : LOW
+
+  Steps:
+    1. Wrap both console.log calls in DEV guard:
+         BEFORE: console.log('[PWA] SW registered:', reg.scope)
+         AFTER:  if (import.meta.env.DEV) console.log('[PWA] SW registered:', reg.scope)
+
+         BEFORE: console.log('[PWA] SW unregistered for development')
+         AFTER:  (remove entirely — dev unregister is silent)
+  Done when: No console output in production builds
+
+  --------------------------------------------------
+  PHASE 3 CHECKLIST
+  --------------------------------------------------
+  [ ] chart.js and react-chartjs-2 removed
+  [ ] jsPDF and html2canvas lazy loaded
+  [ ] Dashboard useEffect has AbortController cleanup
+  [ ] Dashboard API responses cached in Redis
+  [ ] Patients table has working page-by-page navigation
+  [ ] Layout polling interval increased to 60 seconds
+  [ ] Dev and production settings are in separate files
+  [ ] console.log statements removed from main.tsx
+
+
+================================================================================
+  PHASE 4 — UI/UX & ACCESSIBILITY FIXES  (Week 3–5 | Day 15–25)
+  Goal: Improve usability, fix broken UI, Kenya-specific corrections
+================================================================================
+
+  TASK 4.1 — Fix Kenya DPA Badge on Login Page
+  --------------------------------------------------
+  File    : frontend/src/pages/Login.tsx
+  Effort  : 10 minutes
+  Risk    : LOW
+
+  Steps:
+    1. Find the HIPAA trust badge in Login.tsx:
+         BEFORE: <span>...<Hospital size={14}/> HIPAA Aligned</span>
+         AFTER:  <span>...<ShieldCheck size={14}/> Kenya DPA Compliant</span>
+
+    2. Add tooltip or info text: "Compliant with Kenya Data Protection Act 2019"
+  Done when: Login page references Kenya DPA, not HIPAA
+
+  --------------------------------------------------
+  TASK 4.2 — Add ARIA Labels to Icon-Only Buttons
+  --------------------------------------------------
+  Files   : All component and page files
+  Effort  : 3 hours
+  Risk    : LOW
+
+  Steps:
+    1. Find all buttons with only an icon and no text label.
+       Common pattern: <button className="btn btn-icon">  <X size={20} />  </button>
+
+    2. Add aria-label to each:
+         <button aria-label="Close modal" className="btn btn-icon"><X size={20} /></button>
+         <button aria-label="Refresh data" className="btn btn-icon"><RefreshCw size={18} /></button>
+         <button aria-label="Delete record" className="btn btn-icon btn-danger"><Trash size={16} /></button>
+
+    3. Priority files to check:
+         - Layout.tsx (mobile menu button)
+         - Dashboard.tsx (refresh, export buttons)
+         - Patients.tsx (view, delete buttons)
+         - PatientDetail.tsx
+         - Partograph.tsx
+  Done when: All icon-only buttons have descriptive aria-label attributes
+
+  --------------------------------------------------
+  TASK 4.3 — Fix Mobile Responsive Charts
+  --------------------------------------------------
+  File    : frontend/src/pages/Dashboard.tsx
+  Effort  : 1 hour
+  Risk    : LOW
+
+  Steps:
+    1. Find the bottom charts row:
+         BEFORE: style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}
+         AFTER:  className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+
+    2. Fix stats row in index.css — add missing 2-col mobile breakpoint:
+         @media (max-width: 640px) {
+           .stats-row {
+             grid-template-columns: repeat(2, 1fr);
+           }
+         }
+
+    3. Test on 375px (mobile), 768px (tablet), 1024px (desktop)
+  Done when: Dashboard charts stack vertically on mobile and tablet
+
+  --------------------------------------------------
+  TASK 4.4 — Add Audit Log Filters
+  --------------------------------------------------
+  File    : frontend/src/pages/AuditLog.tsx
+  Effort  : 2 hours
+  Risk    : LOW
+
+  Steps:
+    1. Add filter controls above the audit table:
+         - Date range: From / To date pickers
+         - Action type: Created / Updated / Deleted dropdown
+         - User: Staff member dropdown
+
+    2. Pass filters as query params to the audit API:
+         auditApi.getHistory(modelName, pk, { date_from, date_to, action })
+
+    3. Update backend audit view if needed to accept these params
+  Done when: Admins can filter audit log by date range and action type
+
+  --------------------------------------------------
+  TASK 4.5 — Add SMS Preview Before Send
+  --------------------------------------------------
+  File    : frontend/src/pages/Reminders.tsx
+  Effort  : 2 hours
+  Risk    : LOW
+
+  Steps:
+    1. Before calling remindersApi.send(), show a confirmation modal:
+         "You are about to send the following SMS to [patient name]:"
+         [message preview in a bordered text box]
+         [Cancel] [Send SMS]
+
+    2. Add character count below preview (SMS limit is 160 chars)
+    3. Add warning if message exceeds 160 characters
+  Done when: Every SMS send shows a preview and requires confirmation
+
+  --------------------------------------------------
+  TASK 4.6 — Add Swahili SMS Templates
+  --------------------------------------------------
+  File    : backend/reminders/sms_service.py
+  Effort  : 3 hours
+  Risk    : LOW
+
+  Steps:
+    1. Add language parameter to build functions:
+         def build_appointment_reminder(patient_name, appointment_date,
+                                        appointment_time=None,
+                                        facility_name="Itierio Nursing Home",
+                                        lang='en'):
+             if lang == 'sw':
+                 return (
+                     f"Habari {patient_name}, miadi yako ya ANC katika {facility_name} "
+                     f"ni tarehe {appointment_date}. Tafadhali hudhuria. Asante."
+                 )
+             ...existing English message...
+
+    2. Add similar Swahili versions for:
+         - build_postnatal_reminder()
+         - build_missed_visit_alert() (in email_service.py)
+         - build_vaccination_reminder()
+
+    3. Add a lang field to the Patient model (default='en', choices=[('en','English'),('sw','Swahili')])
+    4. Run migration
+    5. SMS tasks should use patient.lang to select template language
+  Done when: Swahili-speaking patients receive SMS in Swahili
+
+  --------------------------------------------------
+  TASK 4.7 — Replace Login Page Static Stats
+  --------------------------------------------------
+  File    : frontend/src/pages/Login.tsx  lines 56-72
+  Effort  : 1 hour
+  Risk    : LOW
+
+  Steps:
+    Option A — Replace with real stats:
+      1. Add a public API endpoint GET /api/dashboard/public-stats/
+         (no auth required — returns only aggregate counts)
+      2. Fetch on Login page mount
+      3. Display real total patients, deliveries count
+
+    
+  Done when: Login page shows no fabricated statistics
+
+  --------------------------------------------------
+  PHASE 4 CHECKLIST
+  --------------------------------------------------
+  [ ] Login badge updated to "Kenya DPA Compliant"
+  [ ] All icon-only buttons have aria-label attributes
+  [ ] Dashboard charts responsive on mobile and tablet
+  [ ] Audit log has date and action type filters
+  [ ] SMS reminders show preview before sending
+
+  
+  [ ] Swahili SMS templates added for all reminder types
+  [ ] Login page static stats replaced or removed
+
+
+================================================================================
+  PHASE 5 — NEW FEATURES & MODULES  (Week 5–10 | Day 25–50)
+  Goal: Add missing clinical modules required for Kenya MoH compliance
+================================================================================
+
+  TASK 5.1 — Referral Tracking Module
+  --------------------------------------------------
+  New files to create:
+    backend/referrals/models.py
+    backend/referrals/serializers.py
+    backend/referrals/views.py
+    backend/referrals/urls.py
+    backend/referrals/migrations/
+    frontend/src/pages/Referrals.tsx
+  Effort  : 3–4 days
+  Risk    : LOW (new module, no changes to existing code)
+
+  Steps:
+    1. Create Django app: python manage.py startapp referrals
+
+    2. Model fields to include:
+         patient          (FK to Patient)
+         referred_by      (FK to StaffUser)
+         referral_date    (DateField)
+         destination_facility  (CharField — KMHFL code + name)
+         reason           (TextField)
+         urgency          (ROUTINE / URGENT / EMERGENCY)
+         clinical_summary (TextField)
+         transport_mode   (AMBULANCE / PRIVATE / PUBLIC)
+         feedback_received (BooleanField)
+         outcome_notes    (TextField)
+         status           (PENDING / ACCEPTED / COMPLETED / DECLINED)
+         created_at / updated_at
+
+    3. Add KMHFL facility list as a fixture (JSON) for autocomplete
+    4. Add URL: path('api/referrals/', include('referrals.urls'))
+    5. Build frontend Referrals.tsx page with:
+         - Create referral form linked to patient
+         - List view with status badges
+         - Update outcome once feedback received
+    6. Add "Referrals" to sidebar nav under OUTPATIENT section
+  Done when: Staff can create, view, and update referrals for any patient
+
+  --------------------------------------------------
+  TASK 5.2 — Labour Ward Board
+  --------------------------------------------------
+  New files:
+    frontend/src/pages/LabourWard.tsx
+  Backend: Uses existing patients + partograph APIs
+  Effort  : 2 days
+  Risk    : LOW
+
+  Steps:
+    1. Create a Kanban-style board with columns:
+         [Early Labour] [Active Labour] [Pushing] [Delivered] [Recovery]
+
+    2. Pull patients from:
+         - Active ANC patients (clinic_stage: ANC1-ANC4) who have a partograph entry today
+         - Show: patient name, EDD, hours in labour, last FHR, risk badge
+
+    3. Allow drag-and-drop or button-click to move patient between columns
+    4. Link each card to patient's partograph page
+    5. Auto-refresh every 2 minutes
+    6. Add "Labour Ward" to sidebar nav under OUTPATIENT
+  Done when: A real-time visual board shows all active labour patients
+
+  --------------------------------------------------
+  TASK 5.3 — Maternal Mortality Review Module
+  --------------------------------------------------
+  New files:
+    backend/mortality/models.py + app
+    frontend/src/pages/MortalityReview.tsx
+  Effort  : 2 days
+  Risk    : LOW (new module)
+
+  Steps:
+    1. Create Django app: python manage.py startapp mortality
+
+    2. Model: MaternalDeathReview
+         patient          (FK — nullable if anonymous)
+         date_of_death    (DateField)
+         cause_of_death   (TextField)
+         avoidable_factors (TextField)
+         three_delays     (TextField — delay in decision/transport/care)
+         recommendations  (TextField)
+         reviewed_by      (FK to StaffUser)
+         review_date      (DateField)
+         is_near_miss     (BooleanField — near misses also captured)
+
+    3. Restrict access to ADMIN and DOCTOR roles only
+    4. Add to sidebar under SYSTEM section for admin users only
+  Done when: Maternal deaths and near-misses can be formally documented
+
+  --------------------------------------------------
+  TASK 5.4 — PMTCT Module (HIV/Prevention of Mother-to-Child Transmission)
+  --------------------------------------------------
+  New files:
+    backend/pmtct/models.py + app
+    frontend/src/pages/PMTCT.tsx
+  Effort  : 3 days
+  Risk    : MEDIUM (sensitive data — requires extra access control)
+
+  Steps:
+    1. Create Django app: python manage.py startapp pmtct
+
+    2. Model: PMTCTRecord
+         patient              (OneToOne FK to Patient)
+         hiv_status           (POSITIVE / NEGATIVE / UNKNOWN / DECLINED_TEST)
+         test_date            (DateField)
+         arv_regimen          (CharField)
+         arv_start_date       (DateField)
+         viral_load           (DecimalField — copies/mL)
+         viral_load_date      (DateField)
+         cd4_count            (IntegerField)
+         infant_prophylaxis   (BooleanField)
+         infant_test_at_6wk   (CharField)
+         infant_test_at_18mo  (CharField)
+         disclosure_status    (DISCLOSED / NOT_DISCLOSED)
+         counselor            (FK to StaffUser)
+         notes                (TextField)
+
+    3. Access: ADMIN, DOCTOR, and NURSE with special PMTCT permission
+    4. Data must NOT appear in general patient list or printouts
+    5. Add "PMTCT" to sidebar under OUTPATIENT — visible only to permitted roles
+  Done when: HIV-positive mothers and exposed infants are tracked separately
+
+  --------------------------------------------------
+  TASK 5.5 — Role-Specific Dashboard Views
+  --------------------------------------------------
+  Files   : frontend/src/pages/Dashboard.tsx
+            backend/dashboard/views.py
+  Effort  : 3 days
+  Risk    : MEDIUM
+
+  Steps:
+    1. Backend: Create role-specific summary endpoints:
+         GET /api/dashboard/summary/         (existing — admin)
+         GET /api/dashboard/nurse-summary/   (new)
+         GET /api/dashboard/doctor-summary/  (new)
+
+    2. Nurse summary returns:
+         - Today's ANC appointments (time-sorted)
+         - Overdue postnatal 7-day checks
+         - Overdue postnatal 6-week checks
+         - Upcoming vaccinations in 3 days
+         - Patients awaiting SMS reminder
+
+    3. Doctor summary returns:
+         - High-risk patients list
+         - Unacknowledged clinical alerts
+         - Open tickets assigned to doctors
+         - Patients on active labour (partograph today)
+
+    4. Frontend: In Dashboard.tsx, switch data source based on user.role:
+         const endpoint = isAdmin ? dashboardApi.summary()
+                        : isDoctor ? dashboardApi.doctorSummary()
+                        : dashboardApi.nurseSummary();
+
+    5. Render different widget layouts per role
+  Done when: Each role sees a dashboard relevant to their daily workflow
+
+  --------------------------------------------------
+  TASK 5.6 — Patient Care Timeline View
+  --------------------------------------------------
+  File    : frontend/src/pages/PatientDetail.tsx
+  Effort  : 2 days
+  Risk    : LOW
+
+  Steps:
+    1. Add a "Care Timeline" tab to PatientDetail page
+    2. Fetch all events for the patient in one API call:
+         - ANC visits (clinical/anc-visits/?patient=id)
+         - Appointments
+         - Postnatal records
+         - Clinical notes
+         - Alerts
+         - Reminders sent
+    3. Merge and sort all events by date descending
+    4. Render as a vertical timeline using existing .timeline CSS classes
+    5. Each event shows: date, type icon, staff name, brief summary
+  Done when: Every patient has a chronological care history timeline
+
+  --------------------------------------------------
+  PHASE 5 CHECKLIST
+  --------------------------------------------------
+  [ ] Referral tracking module built and accessible from sidebar
+  [ ] Labour Ward Board shows active labour patients in real time
+  [ ] Maternal Mortality Review form available to admin/doctor
+  [ ] PMTCT module created with access control
+  [ ] Role-specific dashboards for Admin, Nurse, and Doctor
+  [ ] Patient detail page has care timeline tab
+
+
+================================================================================
+  PHASE 6 — LONG-TERM IMPROVEMENTS  (Week 10–14 | Day 50–70)
+  Goal: Scalability, documentation, integrations, compliance
+================================================================================
+
+  TASK 6.1 — Add OpenAPI / Swagger Documentation
+  --------------------------------------------------
+  File    : backend/requirements.txt  +  settings.py  +  urls.py
+  Effort  : 1 day
+  Risk    : LOW
+
+  Steps:
+    1. Install drf-spectacular:
+         pip install drf-spectacular
+         Add 'drf_spectacular' to INSTALLED_APPS
+
+    2. Add to settings.py:
+         REST_FRAMEWORK = {
+             ...existing...,
+             'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+         }
+
+    3. Add to urls.py:
+         from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerUIView
+         path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+         path('api/docs/', SpectacularSwaggerUIView.as_view(url_name='schema'), name='swagger-ui'),
+
+    4. Add docstrings to all ViewSet classes
+  Done when: API docs accessible at /api/docs/ and auto-update with code
+
+  --------------------------------------------------
+  TASK 6.2 — Add API Versioning
+  --------------------------------------------------
+  File    : backend/config/urls.py
+  Effort  : 1 day
+  Risk    : MEDIUM (requires URL changes)
+
+  Steps:
+    1. Prefix all API URLs with /api/v1/:
+         BEFORE: path('api/patients/', ...)
+         AFTER:  path('api/v1/patients/', ...)
+
+    2. Update frontend api/index.ts base URL:
+         BEFORE: baseURL: '/api'
+         AFTER:  baseURL: '/api/v1'
+
+    3. Keep /api/ as alias redirecting to /api/v1/ for backward compat
+  Done when: All API endpoints accessible under /api/v1/
+
+  --------------------------------------------------
+  TASK 6.3 — Add Bulk SMS Functionality
+  --------------------------------------------------
+  Files   : backend/reminders/views.py
+            frontend/src/pages/Reminders.tsx
+  Effort  : 2 days
+  Risk    : LOW
+
+  Steps:
+    1. Backend: Add bulk SMS endpoint:
+         POST /api/reminders/bulk/
+         Body: { patient_ids: [1,2,3], message_type: 'ANC_REMINDER' }
+
+    2. Task runs via Celery for large batches (>10 patients)
+
+    3. Frontend: Add "Bulk Remind" button on Reminders page:
+         - Select recipients by filter (all ANC3 patients, all missed appts, etc.)
+         - Preview message template
+         - Show progress bar during send
+         - Results: X sent, Y failed
+  Done when: Staff can send SMS reminders to filtered patient groups at once
+
+  --------------------------------------------------
+  TASK 6.4 — Add NHIF Number Validation
+  --------------------------------------------------
+  File    : backend/patients/serializers.py
+            frontend/src/pages/Patients.tsx
+  Effort  : 1 day
+  Risk    : LOW
+
+  Steps:
+    1. Add NHIF number format validator to patient serializer:
+         NHIF numbers in Kenya are numeric, typically 8-12 digits
+         from django.core.validators import RegexValidator
+         nhif_validator = RegexValidator(r'^\d{8,12}$', 'Enter a valid NHIF number')
+
+    2. Add same validation to frontend form in Patients.tsx via useFormValidation
+
+    3. Add NHIF/SHA/SHIF lookup indicator — show ✓ when format is valid
+  Done when: Invalid NHIF/SHA/SHIF numbers are flagged at data entry time
+
+  --------------------------------------------------
+  TASK 6.5 — Encrypt Sensitive Patient Fields
+  --------------------------------------------------
+  File    : backend/patients/models.py
+  Effort  : 2 days
+  Risk    : HIGH (requires migration and data transformation)
+
+  Steps:
+    1. Install django-encrypted-model-fields:
+         pip install django-encrypted-model-fields
+
+    2. Add FIELD_ENCRYPTION_KEY to settings.py (generate with Fernet)
+
+    3. Change sensitive fields to encrypted versions:
+         national_id  -> EncryptedCharField(max_length=20)
+         nhif_number  -> EncryptedCharField(max_length=50)
+         phone_number -> EncryptedCharField(max_length=15)
+
+    4. Write a data migration to encrypt existing values
+
+    5. Note: Encrypted fields cannot be filtered/searched directly.
+       Add a SHA-256 hash field alongside for search lookup:
+         national_id_hash -> CharField (for indexed lookup)
+  Done when: National ID, NHIF, and phone are encrypted at rest in DB
+
+  --------------------------------------------------
+  TASK 6.6 — Add i18n Swahili UI Support
+  --------------------------------------------------
+  Files   : frontend/src/ (all pages and components)
+  Effort  : 5 days
+  Risk    : MEDIUM
+
+  Steps:
+    1. Install react-i18next:
+         npm install react-i18next i18next
+
+    2. Create frontend/src/i18n/ folder with:
+         en.json  (English translations)
+         sw.json  (Swahili translations)
+
+    3. Start with high-traffic pages: Login, Dashboard, Patients, Appointments
+
+    4. Replace hardcoded strings:
+         BEFORE: <h1>Patient Registry</h1>
+         AFTER:  <h1>{t('patients.title')}</h1>
+
+    5. Add language toggle to header (EN | SW)
+
+    6. Store preference in localStorage
+  Done when: Full UI available in both English and Swahili
+
+  --------------------------------------------------
+  TASK 6.7 — Implement Offline-First Data Entry
+  --------------------------------------------------
+  Files   : frontend/public/sw.js
+            frontend/src/ (form pages)
+  Effort  : 5 days
+  Risk    : HIGH (complex PWA implementation)
+
+  Steps:
+    1. Update service worker (sw.js) to cache API GET responses
+    2. Use IndexedDB to queue form submissions when offline:
+         - Patient registration
+         - ANC visit entry
+         - Appointment creation
+    3. On reconnect, process the offline queue automatically
+    4. Show sync status indicator in header
+    5. Show clear offline indicators on all forms
+  Done when: Core data entry works without internet connection
+
+  --------------------------------------------------
+  TASK 6.8 — Add Test Coverage
+  --------------------------------------------------
+  Files   : backend/*/tests.py  (all apps)
+  Effort  : 5 days
+  Risk    : LOW
+
+  Steps:
+    1. Prioritize tests for:
+         - Patient registration (including patient number uniqueness)
+         - ANC visit creation
+         - Appointment status transitions (upcoming -> missed -> attended)
+         - Clinical alert triggering from partograph data
+         - SMS reminder sending (mock Africa's Talking)
+         - Role-based access (nurse cannot access admin endpoints)
+         - JWT token refresh flow
+
+    2. Target minimum 70% code coverage on critical apps:
+         patients, appointments, reminders, alerts
+
+    3. Add to CI/CD:
+         pytest --cov=. --cov-report=term-missing
+  Done when: Automated test suite covers all critical workflows
+
+  --------------------------------------------------
+  PHASE 6 CHECKLIST
+  --------------------------------------------------
+  [ ] Swagger/OpenAPI docs accessible at /api/docs/
+  [ ] API versioned under /api/v1/
+  [ ] Bulk SMS functionality implemented
+  [ ] NHIF number validation added
+  [ ] Sensitive fields encrypted at rest
+  [ ] Swahili UI language option available
+  [ ] Offline data entry works without internet
+  [ ] Test coverage above 70% on critical apps
+
+
+================================================================================
+  FULL IMPLEMENTATION SUMMARY
+================================================================================
+
+  PHASE 1  |  Week 1        |  Critical Security Fixes         |  8 tasks
+  PHASE 2  |  Week 1-2      |  Code Quality & Broken Fixes     |  11 tasks
+  PHASE 3  |  Week 2-3      |  Performance & Architecture      |  8 tasks
+  PHASE 4  |  Week 3-5      |  UI/UX & Accessibility           |  7 tasks
+  PHASE 5  |  Week 5-10     |  New Clinical Modules            |  6 tasks
+  PHASE 6  |  Week 10-14    |  Long-Term & Compliance          |  8 tasks
+
+  TOTAL TASKS   : 48
+  TOTAL DURATION: ~14 weeks (solo developer)
+                  ~6 weeks  (2 developers)
+
+--------------------------------------------------------------------------------
+
+  PROJECTED SCORES AFTER ALL PHASES COMPLETE
+
+  Code Quality        :  62  -->  88 / 100
+  Security            :  42  -->  85 / 100
+  Performance         :  65  -->  85 / 100
+  Architecture        :  67  -->  88 / 100
+  UI/UX               :  74  -->  90 / 100
+  Maternity Workflow  :  72  -->  92 / 100
+  Africa Relevance    :  70  -->  92 / 100
+
+  OVERALL             :  65  -->  89 / 100
+
+--------------------------------------------------------------------------------
+  END OF IMPLEMENTATION PLAN
+  Document: IMPLEMENTATION_PLAN.txt
+  Project : MaterniTrack — Itierio Nursing Home
+================================================================================
